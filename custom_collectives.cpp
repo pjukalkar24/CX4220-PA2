@@ -224,7 +224,39 @@ void Custom_Allgather(int* sendbuf, int sendcount, MPI_Datatype sendtype,
     // Write your code below
     ////////////////////////////////////////
     
+    // copy sendbuf data in the correct position in recvbuf
+    // communicate
 
+    int rank, size;
+    MPI_Comm_size(comm, &size);
+    MPI_Comm_rank(comm, &rank);
+
+    int d = 0;
+    int temp = size - 1;
+    while (temp > 0) {
+        d++;
+        temp >>= 1;
+    }
+
+    for (int i = 0; i < sendcount; ++i) {
+        recvbuf[rank * sendcount + i] = sendbuf[i];
+    }
+
+    for (int j = 0; j < d; ++j) {
+        int partner = rank ^ (1 << j);
+        int data_size = sendcount * (1 << j);
+
+        int send_offset = (rank >> j) << j;
+        int recv_offset = (partner >> j) << j;
+        MPI_Sendrecv(
+            recvbuf + (send_offset * sendcount), data_size, sendtype, partner, 0,
+            recvbuf + (recv_offset * sendcount), data_size, recvtype, partner, 0,
+            comm, 0
+        );
+
+        // send chunk to partner
+        // receive chunk from partner
+    }
 
     ////////////////////////////////////////
 }

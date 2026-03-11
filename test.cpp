@@ -68,7 +68,7 @@ void test_scatter(int n, int size, int root, MPI_Comm comm)
         std::cout << "Number of Processors: " << size << std::endl << std::endl;
     }
 
-    int repeats = 500;
+    int repeats = 100;
     double total_custom_time = 0.0;
     double total_mpi_time = 0.0;
     for (int i = 0; i < repeats; ++i) {
@@ -136,6 +136,71 @@ void test_scatter(int n, int size, int root, MPI_Comm comm)
     }
 }
 
+void test_allgather(int n, int size, MPI_Comm comm)
+{
+    int rank;
+    MPI_Comm_rank(comm, &rank);
+
+    std::vector<int> sendbuf(n / size);
+    std::vector<int> recvbuf(n);
+    std::vector<int> expected(n);
+
+    for (int i = 0; i < n / size; ++i)
+    {
+        sendbuf[i] = rank * n / size + i;
+    }
+
+    if (rank == 0)
+    {
+        std::cout << "Problem Size: " << n << std::endl;
+        std::cout << "Number of Processors: " << size << std::endl;
+    }
+
+    double start, end;
+    if (rank == 0)
+    {
+        start = MPI_Wtime();
+    }
+    // print data on each rank before gather
+    print_rank_ordered("Before MPI_Allgather, sendbuf", sendbuf, size, comm);
+
+    MPI_Allgather(sendbuf.data(), n / size, MPI_INT, expected.data(), n / size, MPI_INT, comm);
+    if (rank == 0)
+    {
+        end = MPI_Wtime();
+        std::cout << "MPI_Allgather time: " << end - start << std::endl;
+    }
+
+    if (rank == 0)
+    {
+        start = MPI_Wtime();
+    }
+    Custom_Allgather(sendbuf.data(), n / size, MPI_INT, recvbuf.data(), n / size, MPI_INT, comm);
+    if (rank == 0)
+    {
+        end = MPI_Wtime();
+        std::cout << "Custom_Allgather time: " << end - start << std::endl;
+    }
+    print_rank_ordered("Custom_Allgather result", recvbuf, size, comm);
+
+    int correct = std::equal(recvbuf.begin(), recvbuf.end(), expected.begin());
+    int result;
+    MPI_Reduce(&correct, &result, 1, MPI_INT, MPI_SUM, 0, comm);
+
+    if (rank == 0)
+    {
+        if (result == size)
+        {
+            std::cout << "Implementation is correct!" << std::endl;
+        }
+        else
+        {
+            std::cout << "Implementation failed" << std::endl;
+            printf("Expected: %d and Received: %d\n", size, result);
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     MPI_Init(&argc, &argv);
@@ -149,7 +214,8 @@ int main(int argc, char **argv)
 
     srand(time(NULL) + rank);
     
-    test_scatter(prob_size, size, root, MPI_COMM_WORLD);
+    // test_scatter(prob_size, size, root, MPI_COMM_WORLD);
+    test_allgather(prob_size, size, MPI_COMM_WORLD);
     MPI_Finalize();
     return 0;
 }
