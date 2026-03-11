@@ -68,56 +68,71 @@ void test_scatter(int n, int size, int root, MPI_Comm comm)
         std::cout << "Number of Processors: " << size << std::endl << std::endl;
     }
 
-    double start, end;
-    if (rank == root)
-    {
-        start = MPI_Wtime();
-    }
-    MPI_Scatter(sendbuf.data(), n / size, MPI_INT, expected.data(), n / size, MPI_INT, root, comm);
-    if (rank == root)
-    {
-        end = MPI_Wtime();
-        std::cout << "MPI_Scatter time: " << end - start << std::endl;
-    }
-
-    print_rank_ordered("MPI_Scatter result", expected, size, comm);
-    if (rank == size - 1) 
-    {
-        std::cout << std::endl;
-    }
-
-    if (rank == root)
-    {
-        start = MPI_Wtime();
-    }
-
-    Custom_Scatter(sendbuf.data(), n / size, MPI_INT, recvbuf.data(), n / size, MPI_INT, root, comm);
-    if (rank == root)
-    {
-        end = MPI_Wtime();
-        std::cout << "Custom_Scatter time: " << end - start << std::endl;
-    }
-
-    print_rank_ordered("Custom_Scatter result", recvbuf, size, comm);
-    if (rank == size - 1) 
-    {
-        std::cout << std::endl;
-    }
-
-    int correct = std::equal(recvbuf.begin(), recvbuf.end(), expected.begin());
-    int result;
-    MPI_Reduce(&correct, &result, 1, MPI_INT, MPI_SUM, root, comm);
-
-    if (rank == root)
-    {
-        if (result == size)
+    int repeats = 500;
+    double total_custom_time = 0.0;
+    double total_mpi_time = 0.0;
+    for (int i = 0; i < repeats; ++i) {
+        double start, end;
+        double start2, end2;
+        if (rank == root)
         {
-            std::cout << "Implementation is correct!" << std::endl;
+            start = MPI_Wtime();
         }
-        else
+        MPI_Scatter(sendbuf.data(), n / size, MPI_INT, expected.data(), n / size, MPI_INT, root, comm);
+        if (rank == root)
         {
-            std::cout << "Implementation failed" << std::endl;
+            end = MPI_Wtime();
+            total_mpi_time += end - start;
+            std::cout << "MPI_Scatter time: " << end - start << std::endl;
         }
+
+        print_rank_ordered("MPI_Scatter result", expected, size, comm);
+        if (rank == size - 1) 
+        {
+            std::cout << std::endl;
+        }
+
+        if (rank == root)
+        {
+            start2 = MPI_Wtime();
+        }
+
+        Custom_Scatter(sendbuf.data(), n / size, MPI_INT, recvbuf.data(), n / size, MPI_INT, root, comm);
+        if (rank == root)
+        {
+            end2 = MPI_Wtime();
+            total_custom_time += end2 - start2;
+            std::cout << "Custom_Scatter time: " << end2 - start2 << std::endl;
+        }
+
+        print_rank_ordered("Custom_Scatter result", recvbuf, size, comm);
+        if (rank == size - 1) 
+        {
+            std::cout << std::endl;
+        }
+
+        int correct = std::equal(recvbuf.begin(), recvbuf.end(), expected.begin());
+        int result;
+        MPI_Reduce(&correct, &result, 1, MPI_INT, MPI_SUM, root, comm);
+
+        if (rank == root)
+        {
+            if (result == size)
+            {
+                std::cout << "Implementation is correct!" << std::endl;
+            }
+            else
+            {
+                std::cout << "Implementation failed" << std::endl;
+            }
+            std::cout << "Slow down: " << (end2 - start2) / (end - start) << "x" << std::endl; 
+        }
+    }
+
+    if (rank == root) {
+        std::cout << std::endl << std::endl << "Average MPI_Scatter time: " << total_mpi_time / repeats << std::endl;
+        std::cout << "Average Custom_Scatter time: " << total_custom_time / repeats << std::endl;
+        std::cout << "Average slow down: " << (total_custom_time / repeats) / (total_mpi_time / repeats) << "x" << std::endl << std::endl;
     }
 }
 
