@@ -21,6 +21,7 @@ Average slow down: 6.98115x
 
 #include <mpi.h>
 #include <iostream>
+#include <cstring>
 
 // best implementation involves reordering data at the root
 void Custom_Scatter(int* sendbuf, int sendcount, MPI_Datatype sendtype,
