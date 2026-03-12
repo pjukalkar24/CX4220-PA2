@@ -253,9 +253,6 @@ void Custom_Allgather(int* sendbuf, int sendcount, MPI_Datatype sendtype,
             recvbuf + (recv_offset * sendcount), data_size, recvtype, partner, 0,
             comm, 0
         );
-
-        // send chunk to partner
-        // receive chunk from partner
     }
 
     ////////////////////////////////////////
@@ -265,8 +262,33 @@ void Custom_Allreduce(int* sendbuf, int* recvbuf, int count,
                       MPI_Datatype datatype, MPI_Op op, MPI_Comm comm) {
     // Write your code below
     ////////////////////////////////////////
-    
 
+    int rank, size;
+    MPI_Comm_size(comm, &size);
+    MPI_Comm_rank(comm, &rank);
+
+    int d = 0;
+    int temp = size - 1;
+    while (temp > 0) {
+        d++;
+        temp >>= 1;
+    }
+
+    memcpy(recvbuf, sendbuf, count * sizeof(int));
+
+    int *tmpbuf = (int*) malloc(count * sizeof(int));
+    for (int j = 0; j < d; ++j) {
+        int partner = rank ^ (1 << j);
+        MPI_Sendrecv(
+            recvbuf, count, datatype, partner, 0,
+            tmpbuf, count, datatype, partner, 0, comm, 0
+        );
+
+        for (int i = 0; i < count; ++i) {
+            recvbuf[i] += tmpbuf[i];
+        }   
+    }
+    free(tmpbuf);
 
     ////////////////////////////////////////
 }

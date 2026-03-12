@@ -201,6 +201,72 @@ void test_allgather(int n, int size, MPI_Comm comm)
     }
 }
 
+void test_allreduce(int n, int size, MPI_Comm comm)
+{
+    int rank;
+    MPI_Comm_rank(comm, &rank);
+
+    std::vector<int> sendbuf(n);
+    std::vector<int> recvbuf(n);
+    std::vector<int> expected(n);
+
+    for (int i = 0; i < n; ++i)
+    {
+        sendbuf[i] = rank * n + i;
+    }
+
+    if (rank == 0)
+    {
+        std::cout << "Problem Size: " << n << std::endl;
+        std::cout << "Number of Processors: " << size << std::endl;
+    }
+    print_rank_ordered("Before MPI_Allreduce, sendbuf", sendbuf, size, comm);
+    if (rank == 0) printf("\n");
+
+    double start, end;
+    if (rank == 0)
+    {
+        start = MPI_Wtime();
+    }
+    MPI_Allreduce(sendbuf.data(), expected.data(), n, MPI_INT, MPI_SUM, comm);
+    if (rank == 0)
+    {
+        end = MPI_Wtime();
+        std::cout << "MPI_Allreduce time: " << end - start << std::endl;
+    }
+    print_rank_ordered("After MPI_Allreduce, expected", expected, size, comm);
+    if (rank == 0) printf("\n");
+
+    if (rank == 0)
+    {
+        start = MPI_Wtime();
+    }
+    Custom_Allreduce(sendbuf.data(), recvbuf.data(), n, MPI_INT, MPI_SUM, comm);
+    if (rank == 0)
+    {
+        end = MPI_Wtime();
+        std::cout << "Custom_Allreduce time: " << end - start << std::endl;
+    }
+    print_rank_ordered("After Custom_Allreduce, recvbuf", recvbuf, size, comm);
+    if (rank == 0) printf("\n");
+    
+    int correct = std::equal(recvbuf.begin(), recvbuf.end(), expected.begin());
+    int result;
+    MPI_Reduce(&correct, &result, 1, MPI_INT, MPI_SUM, 0, comm);
+
+    if (rank == 0)
+    {
+        if (result == size)
+        {
+            std::cout << "Implementation is correct!" << std::endl;
+        }
+        else
+        {
+            std::cout << "Implementation failed" << std::endl;
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     MPI_Init(&argc, &argv);
@@ -215,7 +281,8 @@ int main(int argc, char **argv)
     srand(time(NULL) + rank);
     
     // test_scatter(prob_size, size, root, MPI_COMM_WORLD);
-    test_allgather(prob_size, size, MPI_COMM_WORLD);
+    // test_allgather(prob_size, size, MPI_COMM_WORLD);
+    test_allreduce(prob_size, size, MPI_COMM_WORLD);
     MPI_Finalize();
     return 0;
 }
