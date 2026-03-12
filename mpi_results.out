@@ -1,0 +1,187 @@
+---------------------------------------
+Begin Slurm Prolog: Mar-11-2026 22:29:33
+Job ID:    4388305
+User ID:   pjukalkar3
+Account:   coc
+Job name:  mpi_results
+Partition: pace-cpu
+QOS:       coe-ice
+---------------------------------------
+Architecture:                            x86_64
+CPU op-mode(s):                          32-bit, 64-bit
+Address sizes:                           46 bits physical, 48 bits virtual
+Byte Order:                              Little Endian
+CPU(s):                                  24
+On-line CPU(s) list:                     0-23
+Vendor ID:                               GenuineIntel
+Model name:                              Intel(R) Xeon(R) Gold 6226 CPU @ 2.70GHz
+CPU family:                              6
+Model:                                   85
+Thread(s) per core:                      1
+Core(s) per socket:                      12
+Socket(s):                               2
+Stepping:                                7
+CPU(s) scaling MHz:                      91%
+CPU max MHz:                             2700.0000
+CPU min MHz:                             1200.0000
+BogoMIPS:                                5400.00
+Flags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 cdp_l3 intel_ppin ssbd mba ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm mpx rdt_a avx512f avx512dq rdseed adx smap clflushopt clwb intel_pt avx512cd avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local dtherm ida arat pln pts hwp hwp_act_window hwp_epp hwp_pkg_req vnmi pku ospke avx512_vnni md_clear flush_l1d arch_capabilities
+Virtualization:                          VT-x
+L1d cache:                               768 KiB (24 instances)
+L1i cache:                               768 KiB (24 instances)
+L2 cache:                                24 MiB (24 instances)
+L3 cache:                                38.5 MiB (2 instances)
+NUMA node(s):                            2
+NUMA node0 CPU(s):                       0-11
+NUMA node1 CPU(s):                       12-23
+Vulnerability Gather data sampling:      Vulnerable
+Vulnerability Indirect target selection: Vulnerable
+Vulnerability Itlb multihit:             KVM: Vulnerable
+Vulnerability L1tf:                      Not affected
+Vulnerability Mds:                       Not affected
+Vulnerability Meltdown:                  Not affected
+Vulnerability Mmio stale data:           Vulnerable
+Vulnerability Reg file data sampling:    Not affected
+Vulnerability Retbleed:                  Vulnerable
+Vulnerability Spec rstack overflow:      Not affected
+Vulnerability Spec store bypass:         Vulnerable
+Vulnerability Spectre v1:                Vulnerable: __user pointer sanitization and usercopy barriers only; no swapgs barriers
+Vulnerability Spectre v2:                Vulnerable; IBPB: disabled; STIBP: disabled; PBRSB-eIBRS: Vulnerable; BHI: Vulnerable
+Vulnerability Srbds:                     Not affected
+Vulnerability Tsa:                       Not affected
+Vulnerability Tsx async abort:           Mitigation; TSX disabled
+Vulnerability Vmscape:                   Vulnerable
+-------------------------------------
+rm -f primitives test_runner
+mpic++ -Wall -o primitives main.cpp custom_collectives.cpp
+ 
+=================== CORRECTNESS TESTS ===================
+ 
+##Scatter
+Problem Size: 50000000
+Number of Processors: 8
+MPI_Scatter time: 0.050263
+Custom_Scatter time: 0.137369
+Implementation is correct!
+----------------------------------
+Problem Size: 100000000
+Number of Processors: 16
+MPI_Scatter time: 0.0216488
+Custom_Scatter time: 0.283067
+Implementation is correct!
+==================================
+ 
+##AllGather
+Problem Size: 50000000
+Number of Processors: 8
+MPI_Allgather time: 0.0552783
+Custom_Allgather time: 0.073541
+Implementation is correct!
+----------------------------------
+Problem Size: 100000000
+Number of Processors: 16
+MPI_Allgather time: 0.138768
+Custom_Allgather time: 0.140232
+Implementation is correct!
+==================================
+ 
+##AllReduce
+Problem Size: 50000000
+Number of Processors: 8
+MPI_Allreduce time: 0.186376
+Custom_Allreduce time: 0.743378
+Implementation is correct!
+----------------------------------
+Problem Size: 100000000
+Number of Processors: 16
+MPI_Allreduce time: 0.537939
+Custom_Allreduce time: 2.08029
+Implementation is correct!
+==================================
+ 
+##AlltoAll_Arbitrary
+Problem Size: 50000000
+Number of Processors: 8
+MPI_Alltoall time: 0.0462316
+Custom_Alltoall_Arbitrary time: 0.084104
+Implementation is correct!
+----------------------------------
+Problem Size: 100000000
+Number of Processors: 16
+MPI_Alltoall time: 0.137901
+Custom_Alltoall_Arbitrary time: 0.123639
+Implementation is correct!
+==================================
+ 
+##AlltoAll_Hypercube
+Problem Size: 50000000
+Number of Processors: 8
+MPI_Alltoall time: 0.0519774
+Custom_Alltoall_Hypercubic time: 0.407161
+Implementation is correct!
+----------------------------------
+Problem Size: 100000000
+Number of Processors: 16
+MPI_Alltoall time: 0.139374
+Custom_Alltoall_Hypercubic time: 1.31982
+Implementation is correct!
+==================================
+ 
+==================== RUNTIME TESTS =====================
+ 
+##Scatter
+Problem Size: 100000000
+Number of Processors: 16
+MPI_Scatter time: 0.0469984
+Custom_Scatter time: 0.127984
+Implementation is correct!
+Runtime test passed!
+==================================
+ 
+##AllGather
+Problem Size: 100000000
+Number of Processors: 16
+MPI_Allgather time: 0.138279
+Custom_Allgather time: 0.142611
+Implementation is correct!
+Runtime test passed!
+==================================
+ 
+##AllReduce
+Problem Size: 100000000
+Number of Processors: 16
+MPI_Allreduce time: 0.537889
+Custom_Allreduce time: 2.08046
+Implementation is correct!
+Runtime test passed!
+==================================
+ 
+##AlltoAll_Arbitrary
+Problem Size: 100000000
+Number of Processors: 16
+MPI_Alltoall time: 0.138585
+Custom_Alltoall_Arbitrary time: 0.123498
+Implementation is correct!
+Runtime test passed!
+==================================
+ 
+##AlltoAll_Hypercube
+Problem Size: 100000000
+Number of Processors: 16
+MPI_Alltoall time: 0.134716
+Custom_Alltoall_Hypercubic time: 1.318
+Implementation is correct!
+Runtime test passed!
+ 
+---------------------------------------
+Begin Slurm Epilog: Mar-11-2026 22:30:17
+Job ID:        4388305
+User ID:       pjukalkar3
+Account:       coc
+Job name:      mpi_results
+Resources:     cpu=16,mem=64G,node=1
+Rsrc Used:     cput=00:11:44,vmem=0,walltime=00:00:44,mem=61564K,energy_used=0
+Partition:     pace-cpu
+QOS:           coe-ice
+Nodes:         atl1-1-02-010-8-1
+---------------------------------------
