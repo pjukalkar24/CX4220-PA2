@@ -298,8 +298,52 @@ void Custom_Alltoall_Hypercube(int* sendbuf, int sendcount, MPI_Datatype sendtyp
                                MPI_Comm comm) {
     // Write your code below
     ////////////////////////////////////////
-    
 
+    int rank, size;
+    MPI_Comm_size(comm, &size);
+    MPI_Comm_rank(comm, &rank);
+
+    int d = 0;
+    int temp = size - 1;
+    while (temp > 0) {
+        d++;
+        temp >>= 1;
+    }
+
+    int half = (sendcount * size) / 2;
+    int *buf = (int*) malloc(sendcount * size * sizeof(int));
+    int *tmp = (int*) malloc(half * sizeof(int));
+
+    for (int j = d - 1; j >= 0; --j) {
+        // decide which half to send/recv
+        // lower rank sends upper half, higher rank sends lower half
+
+        // send/recv halves
+        int partner = rank ^ (1 << j);
+        int *send_ptr = (rank < partner) ? sendbuf + half : sendbuf;
+        MPI_Sendrecv(
+            send_ptr, half, sendtype, partner, 0,
+            tmp, half, recvtype, partner, 0,
+            comm, 0
+        );
+
+        // interleave halves by block
+        int *first = (rank < partner) ? sendbuf : tmp;
+        int *second = (rank < partner) ? tmp : sendbuf + half;
+        for (int i = 0; i < size / 2; ++i) {
+            /// copy even block from first list
+            memcpy(buf + (2 * i) * sendcount, first + i * sendcount, sendcount * sizeof(int));
+            // copy odd block from second list
+            memcpy(buf + (2 * i + 1) * sendcount, second + i * sendcount, sendcount * sizeof(int));
+        }
+
+        // copy back into sendbuf
+        memcpy(sendbuf, buf, sendcount * size * sizeof(int));
+    }
+
+    memcpy(recvbuf, buf, sendcount * size * sizeof(int));
+    free(buf);
+    free(tmp);
 
     ////////////////////////////////////////
 }

@@ -330,6 +330,70 @@ void test_alltoall_arbitrary(int n, int size, MPI_Comm comm)
     }
 }
 
+void test_alltoall_hypercubic(int n, int size, MPI_Comm comm)
+{
+    int rank;
+    MPI_Comm_rank(comm, &rank);
+
+    std::vector<int> sendbuf(n);
+    std::vector<int> recvbuf_hypercube(n);
+    std::vector<int> expected(n);
+
+    for (int i = 0; i < n; ++i)
+    {
+        sendbuf[i] = rank * n + i;
+    }
+    print_rank_ordered("Before MPI_Alltoall, sendbuf", sendbuf, size, comm);
+
+    if (rank == 0)
+    {
+        std::cout << "Problem Size: " << n << std::endl;
+        std::cout << "Number of Processors: " << size << std::endl;
+    }
+
+    double start, end;
+    if (rank == 0)
+    {
+        start = MPI_Wtime();
+    }
+    MPI_Alltoall(sendbuf.data(), n / size, MPI_INT, expected.data(), n / size, MPI_INT, comm);
+
+    if (rank == 0)
+    {
+        end = MPI_Wtime();
+        std::cout << "MPI_Alltoall time: " << end - start << std::endl;
+    }
+    print_rank_ordered("MPI_Alltoall result", expected, size, comm);
+
+    if (rank == 0)
+    {
+        start = MPI_Wtime();
+    }
+    Custom_Alltoall_Hypercube(sendbuf.data(), n / size, MPI_INT, recvbuf_hypercube.data(), n / size, MPI_INT, comm);
+    if (rank == 0)
+    {
+        end = MPI_Wtime();
+        std::cout << "Custom_Alltoall_Hypercubic time: " << end - start << std::endl;
+    }
+    print_rank_ordered("Custom_Alltoall_Hypercube result", recvbuf_hypercube, size, comm);
+
+    int correct_hypercube = std::equal(recvbuf_hypercube.begin(), recvbuf_hypercube.end(), expected.begin());
+    int result_hypercube;
+    MPI_Reduce(&correct_hypercube, &result_hypercube, 1, MPI_INT, MPI_SUM, 0, comm);
+
+    if (rank == 0)
+    {
+        if (result_hypercube == size)
+        {
+            std::cout << "Implementation is correct!" << std::endl;
+        }
+        else
+        {
+            std::cout << "Implementation failed" << std::endl;
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
     MPI_Init(&argc, &argv);
@@ -346,7 +410,8 @@ int main(int argc, char **argv)
     // test_scatter(prob_size, size, root, MPI_COMM_WORLD);
     // test_allgather(prob_size, size, MPI_COMM_WORLD);
     // test_allreduce(prob_size, size, MPI_COMM_WORLD);
-    test_alltoall_arbitrary(prob_size, size, MPI_COMM_WORLD);
+    // test_alltoall_arbitrary(prob_size, size, MPI_COMM_WORLD);
+    test_alltoall_hypercubic(prob_size, size, MPI_COMM_WORLD);
 
     MPI_Finalize();
     return 0;
