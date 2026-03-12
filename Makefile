@@ -8,7 +8,7 @@ EXEC = primitives
 TEST_EXEC = test_runner
 
 NP ?= 8
-TEST_ARGS ?= -r 100000000 0
+TEST_ARGS ?= -a 50000000 0
 
 .PHONY: all autograder test clean
 

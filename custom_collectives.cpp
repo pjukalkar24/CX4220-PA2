@@ -309,8 +309,22 @@ void Custom_Alltoall_Arbitrary(int* sendbuf, int sendcount, MPI_Datatype sendtyp
                                MPI_Comm comm) {
     // Write your code below
     ////////////////////////////////////////
-    
 
+    int rank, size;
+    MPI_Comm_size(comm, &size);
+    MPI_Comm_rank(comm, &rank);
+
+    memcpy(recvbuf + rank * recvcount, sendbuf + rank * sendcount, sendcount * sizeof(int));
+
+    for (int j = 1; j < size; ++j) {
+        int send_to = (rank + j) % size;
+        int recv_from = (rank - j + size) % size;
+        MPI_Sendrecv(
+            sendbuf + send_to * sendcount, sendcount, sendtype, send_to, 0,
+            recvbuf + recv_from * recvcount, recvcount, recvtype, recv_from, 0,
+            comm, 0
+        );
+    }
 
     ////////////////////////////////////////
 }
