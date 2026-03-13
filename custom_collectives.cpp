@@ -1,22 +1,3 @@
-/*
-
-ROOT 0:
-Average MPI_Scatter time: 0.00959786
-Average Custom_Scatter time: 0.0120169
-Average slow down: 1.25204x
-
-WITH REORDER, NON-0 ROOT:
-Average MPI_Scatter time: 0.00980716
-Average Custom_Scatter time: 0.0174468
-Average slow down: 1.77898x
-
-WITH RELAY TO ROOT 0, NON-0 ROOT:
-Average MPI_Scatter time: 0.0097098
-Average Custom_Scatter time: 0.0677856
-Average slow down: 6.98115x
-
-*/
-
 #include "custom_collectives.h"
 
 #include <mpi.h>
@@ -30,10 +11,12 @@ void Custom_Scatter(int* sendbuf, int sendcount, MPI_Datatype sendtype,
     // Write your code below
     ////////////////////////////////////////
 
+    // intiialize rank and size
     int rank, size;
     MPI_Comm_size(comm, &size);
     MPI_Comm_rank(comm, &rank);
 
+    // initialize problem size, d = log2(size)
     int problem_size = sendcount * size;
     int d = 0;
     int temp = size - 1;
@@ -42,21 +25,26 @@ void Custom_Scatter(int* sendbuf, int sendcount, MPI_Datatype sendtype,
         temp >>= 1;
     }
 
+    // create a buffer to hold reordered data at the root
     int *buf = (int*) malloc(problem_size * sizeof(int));
     if (root != 0 && rank == root) {
         for (int v = 0; v < size; ++v) {
+            // buf[v] = sendbuf[v ^ root]
             memcpy(buf + v * sendcount, sendbuf + (v ^ root) * sendcount, sendcount * sizeof(int));
         }
     } else if (root == 0 && rank == root) {
+        // if root is 0, we do't need to reorder
         free(buf);
         buf = sendbuf;
     }
 
+    // main algorithm
     int round = 1;
     int flip = 1 << (d - 1);
     int mask = flip - 1;
     for (int j = d - 1; j >= 0; --j) {
         if (((rank ^ root) & mask) == 0) {
+            // send / recv half of the data
             int half = problem_size >> round;
             if (((rank ^ root) & flip) == 0) {
                 MPI_Send(buf + half, half, sendtype, rank ^ flip, 0, comm);
@@ -70,150 +58,12 @@ void Custom_Scatter(int* sendbuf, int sendcount, MPI_Datatype sendtype,
         ++round;
     }
 
+    // copy into recvbuf
     memcpy(recvbuf, buf, recvcount * sizeof(int));
     if (root == 0 && rank == root) {
         return;
     }
     free(buf);
-
-    ////////////////////////////////////////
-}
-
-void Custom_Scatter_RELAY(int* sendbuf, int sendcount, MPI_Datatype sendtype,
-                    int* recvbuf, int recvcount, MPI_Datatype recvtype,
-                    int root, MPI_Comm comm) {
-    // Write your code below
-    ////////////////////////////////////////
-
-    int rank, size;
-    MPI_Comm_size(comm, &size);
-    MPI_Comm_rank(comm, &rank);
-
-    int problem_size = sendcount * size;
-    int d = 0;
-    int temp = size - 1;
-    while (temp > 0) {
-        d++;
-        temp >>= 1;
-    }
-
-    // relay to reestablish root as 0
-    if (root != 0 && rank == root) {
-        MPI_Send(sendbuf, problem_size, sendtype, 0, 0, comm);
-    }
-    if (root != 0 && rank == 0) {
-        sendbuf = (int*) malloc(problem_size * sizeof(int));
-        MPI_Recv(sendbuf, problem_size, recvtype, root, 0, comm, NULL);
-    }
-    root = 0;
-
-    int *buf;
-    if (rank == root) {
-        buf = sendbuf;
-    } else {
-        buf = (int*) malloc(problem_size * sizeof(int));
-    }
-
-    int round = 1;
-    int flip = 1 << (d - 1);
-    int mask = flip - 1;
-    for (int j = d - 1; j >= 0; --j) {
-        if (((rank ^ root) & mask) == 0) {
-            int half = problem_size >> round;
-            if (((rank ^ root) & flip) == 0) {
-                MPI_Send(buf + half, half, sendtype, rank ^ flip, 0, comm);
-            } else {
-                MPI_Recv(buf, half, recvtype, rank ^ flip, 0, comm, NULL);
-            }
-        }
-
-        mask >>= 1;
-        flip >>= 1;
-        ++round;
-    }
-
-    memcpy(recvbuf, buf, recvcount * sizeof(int));
-    if (rank != root) {
-        free(buf);
-    }
-
-    ////////////////////////////////////////
-}
-
-void Custom_Scatter_DEBUG(int* sendbuf, int sendcount, MPI_Datatype sendtype,
-                    int* recvbuf, int recvcount, MPI_Datatype recvtype,
-                    int root, MPI_Comm comm) {
-    // Write your code below
-    ////////////////////////////////////////
-
-    int rank, size;
-    MPI_Comm_size(comm, &size);
-    MPI_Comm_rank(comm, &rank);
-
-    int problem_size = sendcount * size;
-
-    int d = 0;
-    int temp = size - 1;
-    while (temp > 0) {
-        d++;
-        temp >>= 1;
-    }
-
-    int flip = 1 << (d - 1);
-    int mask = flip - 1;
-
-    int round = 1;
-
-    for (int j = d - 1; j >= 0; --j) {
-        // debug
-        MPI_Barrier(comm);
-        if (rank == root) {
-            std::cout << "Step " << (d-j) << std::endl;
-        }
-        MPI_Barrier(comm);
-        // debug
-
-        if (((rank ^ root) & mask) == 0) {
-            int half = problem_size >> round;
-            if (((rank ^ root) & flip) == 0) {
-
-                // debug
-                std::cout << "Rank " << rank << " sends to rank " << (rank ^ flip) << ": ";
-                for (int i = 0; i < half; ++i) {
-                    std::cout << sendbuf[half + i] << " ";
-                }
-                std::cout << std::endl;
-                // debug
-
-                MPI_Send(sendbuf + half, half, sendtype, rank ^ flip, 0, comm);
-            } else {
-                MPI_Recv(sendbuf, half, recvtype, rank ^ flip, 0, comm, NULL);
-                // for (int i = 0; i < recvcount; ++i) {
-                //     recvbuf[i] = sendbuf[i];
-                // }
-            }
-        }
-
-        for (int i = 0; i < recvcount; ++i) {
-            recvbuf[i] = sendbuf[i];
-        }
-
-        mask >>= 1;
-        flip >>= 1;
-
-        // debug
-        MPI_Barrier(comm);
-        if (rank == root) {
-            std::cout << "Step " << (d-j) << " complete" << std::endl << std::endl;
-        }
-        // debug
-
-        ++round;
-    }
-
-    // debug
-    MPI_Barrier(comm);
-    // debug
 
     ////////////////////////////////////////
 }
@@ -227,10 +77,12 @@ void Custom_Allgather(int* sendbuf, int sendcount, MPI_Datatype sendtype,
     // copy sendbuf data in the correct position in recvbuf
     // communicate
 
+    // init rank and size
     int rank, size;
     MPI_Comm_size(comm, &size);
     MPI_Comm_rank(comm, &rank);
 
+    // get d = log2(size)
     int d = 0;
     int temp = size - 1;
     while (temp > 0) {
@@ -238,14 +90,17 @@ void Custom_Allgather(int* sendbuf, int sendcount, MPI_Datatype sendtype,
         temp >>= 1;
     }
 
+    // copy local data into recvbuf at the correct position based on rank
     for (int i = 0; i < sendcount; ++i) {
         recvbuf[rank * sendcount + i] = sendbuf[i];
     }
 
     for (int j = 0; j < d; ++j) {
+        // get the partner and current data size to send/recv
         int partner = rank ^ (1 << j);
         int data_size = sendcount * (1 << j);
 
+        // send and receieve data with partner, copying into correct position of recvbuf
         int send_offset = (rank >> j) << j;
         int recv_offset = (partner >> j) << j;
         MPI_Sendrecv(
@@ -263,10 +118,12 @@ void Custom_Allreduce(int* sendbuf, int* recvbuf, int count,
     // Write your code below
     ////////////////////////////////////////
 
+    // init rank and size
     int rank, size;
     MPI_Comm_size(comm, &size);
     MPI_Comm_rank(comm, &rank);
 
+    // get d = log2(size)
     int d = 0;
     int temp = size - 1;
     while (temp > 0) {
@@ -274,16 +131,19 @@ void Custom_Allreduce(int* sendbuf, int* recvbuf, int count,
         temp >>= 1;
     }
 
+    // copy sendbuf into recvbuf
     memcpy(recvbuf, sendbuf, count * sizeof(int));
 
     int *tmpbuf = (int*) malloc(count * sizeof(int));
     for (int j = 0; j < d; ++j) {
+        // get partner and send/recv local data
         int partner = rank ^ (1 << j);
         MPI_Sendrecv(
             recvbuf, count, datatype, partner, 0,
             tmpbuf, count, datatype, partner, 0, comm, 0
         );
 
+        // update this rank's data with partner rank's data
         for (int i = 0; i < count; ++i) {
             recvbuf[i] += tmpbuf[i];
         }   
@@ -299,10 +159,12 @@ void Custom_Alltoall_Hypercube(int* sendbuf, int sendcount, MPI_Datatype sendtyp
     // Write your code below
     ////////////////////////////////////////
 
+    // init rank and size
     int rank, size;
     MPI_Comm_size(comm, &size);
     MPI_Comm_rank(comm, &rank);
 
+    // get d = log2(size)
     int d = 0;
     int temp = size - 1;
     while (temp > 0) {
@@ -310,7 +172,7 @@ void Custom_Alltoall_Hypercube(int* sendbuf, int sendcount, MPI_Datatype sendtyp
         temp >>= 1;
     }
 
-    int half = (sendcount * size) / 2;
+    int half = (sendcount * size) / 2; // get halfway point of data
     int *buf = (int*) malloc(sendcount * size * sizeof(int));
     int *tmp = (int*) malloc(half * sizeof(int));
 
@@ -331,9 +193,9 @@ void Custom_Alltoall_Hypercube(int* sendbuf, int sendcount, MPI_Datatype sendtyp
         int *first = (rank < partner) ? sendbuf : tmp;
         int *second = (rank < partner) ? tmp : sendbuf + half;
         for (int i = 0; i < size / 2; ++i) {
-            /// copy even block from first list
+            /// copy block from first list into even position
             memcpy(buf + (2 * i) * sendcount, first + i * sendcount, sendcount * sizeof(int));
-            // copy odd block from second list
+            // copy block from second list into odd position
             memcpy(buf + (2 * i + 1) * sendcount, second + i * sendcount, sendcount * sizeof(int));
         }
 
@@ -341,6 +203,7 @@ void Custom_Alltoall_Hypercube(int* sendbuf, int sendcount, MPI_Datatype sendtyp
         memcpy(sendbuf, buf, sendcount * size * sizeof(int));
     }
 
+    // copy all into
     memcpy(recvbuf, buf, sendcount * size * sizeof(int));
     free(buf);
     free(tmp);
@@ -354,13 +217,17 @@ void Custom_Alltoall_Arbitrary(int* sendbuf, int sendcount, MPI_Datatype sendtyp
     // Write your code below
     ////////////////////////////////////////
 
+
+    // init rank and size
     int rank, size;
     MPI_Comm_size(comm, &size);
     MPI_Comm_rank(comm, &rank);
 
+    // copy local data into correct position of recvbuf using rank
     memcpy(recvbuf + rank * recvcount, sendbuf + rank * sendcount, sendcount * sizeof(int));
 
     for (int j = 1; j < size; ++j) {
+        // use a cyclic shift to determine partners, then send/recv correct blocks
         int send_to = (rank + j) % size;
         int recv_from = (rank - j + size) % size;
         MPI_Sendrecv(
