@@ -49,7 +49,7 @@ void Custom_Scatter(int* sendbuf, int sendcount, MPI_Datatype sendtype,
             if (((rank ^ root) & flip) == 0) {
                 MPI_Send(buf + half, half, sendtype, rank ^ flip, 0, comm);
             } else {
-                MPI_Recv(buf, half, recvtype, rank ^ flip, 0, comm, NULL);
+                MPI_Recv(buf, half, recvtype, rank ^ flip, 0, comm, MPI_STATUS_IGNORE);
             }
         }
 
@@ -106,7 +106,7 @@ void Custom_Allgather(int* sendbuf, int sendcount, MPI_Datatype sendtype,
         MPI_Sendrecv(
             recvbuf + (send_offset * sendcount), data_size, sendtype, partner, 0,
             recvbuf + (recv_offset * sendcount), data_size, recvtype, partner, 0,
-            comm, 0
+            comm, MPI_STATUS_IGNORE
         );
     }
 
@@ -140,7 +140,7 @@ void Custom_Allreduce(int* sendbuf, int* recvbuf, int count,
         int partner = rank ^ (1 << j);
         MPI_Sendrecv(
             recvbuf, count, datatype, partner, 0,
-            tmpbuf, count, datatype, partner, 0, comm, 0
+            tmpbuf, count, datatype, partner, 0, comm, MPI_STATUS_IGNORE
         );
 
         // update this rank's data with partner rank's data
@@ -186,7 +186,7 @@ void Custom_Alltoall_Hypercube(int* sendbuf, int sendcount, MPI_Datatype sendtyp
         MPI_Sendrecv(
             send_ptr, half, sendtype, partner, 0,
             tmp, half, recvtype, partner, 0,
-            comm, 0
+            comm, MPI_STATUS_IGNORE
         );
 
         // interleave halves by block
@@ -233,7 +233,7 @@ void Custom_Alltoall_Arbitrary(int* sendbuf, int sendcount, MPI_Datatype sendtyp
         MPI_Sendrecv(
             sendbuf + send_to * sendcount, sendcount, sendtype, send_to, 0,
             recvbuf + recv_from * recvcount, recvcount, recvtype, recv_from, 0,
-            comm, 0
+            comm, MPI_STATUS_IGNORE
         );
     }
 
